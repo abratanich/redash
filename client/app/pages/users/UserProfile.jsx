@@ -1,96 +1,69 @@
-import React, { useState, useEffect } from "react";
-import PropTypes from "prop-types";
+import React from 'react';
+import PropTypes from 'prop-types';
+import { react2angular } from 'react2angular';
 
-import routeWithUserSession from "@/components/ApplicationArea/routeWithUserSession";
-import EmailSettingsWarning from "@/components/EmailSettingsWarning";
-import DynamicComponent from "@/components/DynamicComponent";
-import LoadingState from "@/components/items-list/components/LoadingState";
-import wrapSettingsTab from "@/components/SettingsWrapper";
+import { EmailSettingsWarning } from '@/components/EmailSettingsWarning';
+import UserEdit from '@/components/users/UserEdit';
+import UserShow from '@/components/users/UserShow';
+import LoadingState from '@/components/items-list/components/LoadingState';
 
-import User from "@/services/user";
-import { currentUser } from "@/services/auth";
-import routes from "@/services/routes";
-import useImmutableCallback from "@/lib/hooks/useImmutableCallback";
+import { User } from '@/services/user';
+import settingsMenu from '@/services/settingsMenu';
+import { $route } from '@/services/ng';
+import { currentUser } from '@/services/auth';
+import PromiseRejectionError from '@/lib/promise-rejection-error';
+import './settings.less';
 
-import EditableUserProfile from "./components/EditableUserProfile";
-import ReadOnlyUserProfile from "./components/ReadOnlyUserProfile";
+class UserProfile extends React.Component {
+  static propTypes = {
+    onError: PropTypes.func,
+  };
 
-import "./settings.less";
+  static defaultProps = {
+    onError: () => {},
+  };
 
-function UserProfile({ userId, onError }) {
-  const [user, setUser] = useState(null);
+  constructor(props) {
+    super(props);
+    this.state = { user: null };
+  }
 
-  const handleError = useImmutableCallback(onError);
-
-  useEffect(() => {
-    let isCancelled = false;
-    User.get({ id: userId || currentUser.id })
-      .then(user => {
-        if (!isCancelled) {
-          setUser(User.convertUserInfo(user));
+  componentDidMount() {
+    const userId = $route.current.params.userId || currentUser.id;
+    User.get({ id: userId }).$promise
+      .then(user => this.setState({ user: User.convertUserInfo(user) }))
+      .catch((error) => {
+        // ANGULAR_REMOVE_ME This code is related to Angular's HTTP services
+        if (error.status && error.data) {
+          error = new PromiseRejectionError(error);
         }
-      })
-      .catch(error => {
-        if (!isCancelled) {
-          handleError(error);
-        }
+        this.props.onError(error);
       });
+  }
 
-    return () => {
-      isCancelled = true;
-    };
-  }, [userId, handleError]);
-
-  const canEdit = user && (currentUser.isAdmin || currentUser.id === user.id);
-  return (
-    <React.Fragment>
-      <EmailSettingsWarning featureName="invite emails" className="m-b-20" adminOnly />
-      <div className="row">
-        {!user && <LoadingState className="" />}
-        {user && (
-          <DynamicComponent name="UserProfile" user={user}>
-            {!canEdit && <ReadOnlyUserProfile user={user} />}
-            {canEdit && <EditableUserProfile user={user} />}
-          </DynamicComponent>
-        )}
-      </div>
-    </React.Fragment>
-  );
+  render() {
+    const { user } = this.state;
+    const canEdit = user && (currentUser.isAdmin || currentUser.id === user.id);
+    const UserComponent = canEdit ? UserEdit : UserShow;
+    return (
+      <React.Fragment>
+        <EmailSettingsWarning featureName="invite emails" />
+        <div className="row">
+          {user ? <UserComponent user={user} /> : <LoadingState className="" />}
+        </div>
+      </React.Fragment>
+    );
+  }
 }
 
-UserProfile.propTypes = {
-  userId: PropTypes.string,
-  onError: PropTypes.func,
-};
-
-UserProfile.defaultProps = {
-  userId: null, // defaults to `currentUser.id`
-  onError: () => {},
-};
-
-const UserProfilePage = wrapSettingsTab(
-  "Users.Account",
-  {
-    title: "Account",
-    path: "users/me",
+export default function init(ngModule) {
+  settingsMenu.add({
+    title: 'Account',
+    path: 'users/me',
     order: 7,
-  },
-  UserProfile
-);
+  });
 
-routes.register(
-  "Users.Account",
-  routeWithUserSession({
-    path: "/users/me",
-    title: "Account",
-    render: pageProps => <UserProfilePage {...pageProps} />,
-  })
-);
-routes.register(
-  "Users.ViewOrEdit",
-  routeWithUserSession({
-    path: "/users/:userId",
-    title: "Users",
-    render: pageProps => <UserProfilePage {...pageProps} />,
-  })
-);
+  ngModule.component('pageUserProfile', react2angular(UserProfile));
+}
+
+init.init = true;

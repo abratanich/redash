@@ -1,9 +1,8 @@
-#!/bin/env python3
-
+#!/bin/env python
+from __future__ import print_function
 import sys
 import re
 import subprocess
-
 
 def get_change_log(previous_sha):
     args = ['git', '--no-pager', 'log', '--merges', '--grep', 'Merge pull request', '--pretty=format:"%h|%s|%b|%p"', 'master...{}'.format(previous_sha)]

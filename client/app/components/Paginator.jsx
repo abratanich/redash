@@ -1,21 +1,22 @@
-import React from "react";
-import PropTypes from "prop-types";
-import Pagination from "antd/lib/pagination";
+import React from 'react';
+import PropTypes from 'prop-types';
+import { react2angular } from 'react2angular';
+import Pagination from 'antd/lib/pagination';
 
-const MIN_ITEMS_PER_PAGE = 5;
-
-export default function Paginator({ page, showPageSizeSelect, pageSize, onPageSizeChange, totalCount, onChange }) {
-  if (totalCount <= (showPageSizeSelect ? MIN_ITEMS_PER_PAGE : pageSize)) {
+export function Paginator({
+  page,
+  itemsPerPage,
+  totalCount,
+  onChange,
+}) {
+  if (totalCount <= itemsPerPage) {
     return null;
   }
   return (
     <div className="paginator-container">
       <Pagination
-        showSizeChanger={showPageSizeSelect}
-        pageSizeOptions={["5", "10", "20", "50", "100"]}
-        onShowSizeChange={(_, size) => onPageSizeChange(size)}
         defaultCurrent={page}
-        pageSize={pageSize}
+        defaultPageSize={itemsPerPage}
         total={totalCount}
         onChange={onChange}
       />
@@ -25,15 +26,35 @@ export default function Paginator({ page, showPageSizeSelect, pageSize, onPageSi
 
 Paginator.propTypes = {
   page: PropTypes.number.isRequired,
-  showPageSizeSelect: PropTypes.bool,
-  pageSize: PropTypes.number.isRequired,
+  itemsPerPage: PropTypes.number.isRequired,
   totalCount: PropTypes.number.isRequired,
-  onPageSizeChange: PropTypes.func,
   onChange: PropTypes.func,
 };
 
 Paginator.defaultProps = {
-  showPageSizeSelect: false,
   onChange: () => {},
-  onPageSizeChange: () => {},
 };
+
+export default function init(ngModule) {
+  ngModule.component('paginatorImpl', react2angular(Paginator));
+  ngModule.component('paginator', {
+    template: `
+      <paginator-impl
+        page="$ctrl.paginator.page"
+        items-per-page="$ctrl.paginator.itemsPerPage"
+        total-count="$ctrl.paginator.totalCount"
+        on-change="$ctrl.onPageChanged"
+      ></paginator-impl>`,
+    bindings: {
+      paginator: '<',
+    },
+    controller($scope) {
+      this.onPageChanged = (page) => {
+        this.paginator.setPage(page);
+        $scope.$applyAsync();
+      };
+    },
+  });
+}
+
+init.init = true;

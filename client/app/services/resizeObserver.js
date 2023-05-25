@@ -8,7 +8,10 @@ function checkItems() {
       const width = Math.round(bounds.width * 10);
       const height = Math.round(bounds.height * 10);
 
-      if (item.width !== width || item.height !== height) {
+      if (
+        (item.width !== width) ||
+        (item.height !== height)
+      ) {
         item.width = width;
         item.height = height;
         item.callback(node);

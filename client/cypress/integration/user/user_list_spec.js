@@ -1,14 +1,14 @@
-describe("User List", () => {
+describe('User List', () => {
   beforeEach(() => {
     cy.login();
-    cy.visit("/users");
+    cy.visit('/users');
   });
 
-  it("renders the page and takes a screenshot", () => {
-    cy.getByTestId("UserList")
-      .should("exist")
-      .and("contain", "Example Admin");
+  it('renders the page and takes a screenshot', () => {
+    cy.getByTestId('TimeAgo').then(($timeAgo) => {
+      $timeAgo.text('an hour ago');
+    });
 
-    cy.percySnapshot("Users");
+    cy.percySnapshot('Users');
   });
 });

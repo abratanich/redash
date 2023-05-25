@@ -1,10 +1,10 @@
-.PHONY: compose_build up test_db create_database clean down tests lint backend-unit-tests frontend-unit-tests test build watch start redis-cli bash
+.PHONY: compose_build up test_db create_database clean down bundle tests lint backend-unit-tests frontend-unit-tests test build watch start redis-cli bash
 
 compose_build:
-	COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker-compose build
+	docker-compose build
 
 up:
-	COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker-compose up -d --build
+	docker-compose up -d --build
 
 test_db:
 	@for i in `seq 1 5`; do \
@@ -22,6 +22,9 @@ clean:
 down:
 	docker-compose down
 
+bundle:
+	docker-compose run server bin/bundle-extensions
+
 tests:
 	docker-compose run server tests
 
@@ -31,20 +34,21 @@ lint:
 backend-unit-tests: up test_db
 	docker-compose run --rm --name tests server tests
 
-frontend-unit-tests:
-	CYPRESS_INSTALL_BINARY=0 PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1 yarn --frozen-lockfile
-	yarn test
+frontend-unit-tests: bundle
+	npm install
+	npm run bundle
+	npm test
 
 test: lint backend-unit-tests frontend-unit-tests
 
-build: 
-	yarn build
+build: bundle
+	npm run build
 
-watch: 
-	yarn watch
+watch: bundle
+	npm run watch
 
-start: 
-	yarn start
+start: bundle
+	npm run start
 
 redis-cli:
 	docker-compose run --rm redis redis-cli -h redis

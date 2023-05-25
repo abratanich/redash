@@ -1,9 +1,15 @@
-import { axios } from "@/services/axios";
+export let AlertSubscription = null; // eslint-disable-line import/no-mutable-exports
 
-const AlertSubscription = {
-  query: ({ alertId }) => axios.get(`api/alerts/${alertId}/subscriptions`),
-  create: data => axios.post(`api/alerts/${data.alert_id}/subscriptions`, data),
-  delete: data => axios.delete(`api/alerts/${data.alert_id}/subscriptions/${data.id}`),
-};
+function AlertSubscriptionService($resource) {
+  return $resource('api/alerts/:alertId/subscriptions/:subscriberId', { alertId: '@alert_id', subscriberId: '@id' });
+}
 
-export default AlertSubscription;
+export default function init(ngModule) {
+  ngModule.factory('AlertSubscription', AlertSubscriptionService);
+
+  ngModule.run(($injector) => {
+    AlertSubscription = $injector.get('AlertSubscription');
+  });
+}
+
+init.init = true;

@@ -1,59 +1,51 @@
-import React from "react";
-import cx from "classnames";
+import React from 'react';
+import { react2angular } from 'react2angular';
 
-import Button from "antd/lib/button";
-import routeWithUserSession from "@/components/ApplicationArea/routeWithUserSession";
-import Link from "@/components/Link";
-import PageHeader from "@/components/PageHeader";
-import Paginator from "@/components/Paginator";
-import DynamicComponent from "@/components/DynamicComponent";
-import { DashboardTagsControl } from "@/components/tags-control/TagsControl";
-import { wrap as itemsList, ControllerType } from "@/components/items-list/ItemsList";
-import { ResourceItemsSource } from "@/components/items-list/classes/ItemsSource";
-import { UrlStateStorage } from "@/components/items-list/classes/StateStorage";
-import * as Sidebar from "@/components/items-list/components/Sidebar";
-import ItemsTable, { Columns } from "@/components/items-list/components/ItemsTable";
-import useItemsListExtraActions from "@/components/items-list/hooks/useItemsListExtraActions";
-import CreateDashboardDialog from "@/components/dashboards/CreateDashboardDialog";
-import Layout from "@/components/layouts/ContentWithSidebar";
+import { PageHeader } from '@/components/PageHeader';
+import { Paginator } from '@/components/Paginator';
+import { DashboardTagsControl } from '@/components/tags-control/TagsControl';
 
-import { Dashboard } from "@/services/dashboard";
-import { currentUser } from "@/services/auth";
-import routes from "@/services/routes";
+import { wrap as itemsList, ControllerType } from '@/components/items-list/ItemsList';
+import { ResourceItemsSource } from '@/components/items-list/classes/ItemsSource';
+import { UrlStateStorage } from '@/components/items-list/classes/StateStorage';
 
-import DashboardListEmptyState from "./components/DashboardListEmptyState";
+import LoadingState from '@/components/items-list/components/LoadingState';
+import * as Sidebar from '@/components/items-list/components/Sidebar';
+import ItemsTable, { Columns } from '@/components/items-list/components/ItemsTable';
 
-import "./dashboard-list.css";
+import Layout from '@/components/layouts/ContentWithSidebar';
 
-const sidebarMenu = [
-  {
-    key: "all",
-    href: "dashboards",
-    title: "All Dashboards",
-    icon: () => <Sidebar.MenuIcon icon="zmdi zmdi-view-quilt" />,
-  },
-  {
-    key: "my",
-    href: "dashboards/my",
-    title: "My Dashboards",
-    icon: () => <Sidebar.ProfileImage user={currentUser} />,
-  },
-  {
-    key: "favorites",
-    href: "dashboards/favorites",
-    title: "Favorites",
-    icon: () => <Sidebar.MenuIcon icon="fa fa-star" />,
-  },
-];
+import { Dashboard } from '@/services/dashboard';
+import { routesToAngularRoutes } from '@/lib/utils';
 
-const listColumns = [
-  Columns.favorites({ className: "p-r-0" }),
-  Columns.custom.sortable(
-    (text, item) => (
+import DashboardListEmptyState from './DashboardListEmptyState';
+
+import './dashboard-list.css';
+
+class DashboardList extends React.Component {
+  static propTypes = {
+    controller: ControllerType.isRequired,
+  };
+
+  sidebarMenu = [
+    {
+      key: 'all',
+      href: 'dashboards',
+      title: 'All Dashboards',
+    },
+    {
+      key: 'favorites',
+      href: 'dashboards/favorites',
+      title: 'Favorites',
+      icon: () => <Sidebar.MenuIcon icon="fa fa-star" />,
+    },
+  ];
+
+  listColumns = [
+    Columns.favorites({ className: 'p-r-0' }),
+    Columns.custom.sortable((text, item) => (
       <React.Fragment>
-        <Link className="table-main-title" href={item.url} data-test={`DashboardId${item.id}`}>
-          {item.name}
-        </Link>
+        <a className="table-main-title" href={'dashboard/' + item.slug} data-test={item.slug}>{ item.name }</a>
         <DashboardTagsControl
           className="d-block"
           tags={item.tags}
@@ -61,142 +53,115 @@ const listColumns = [
           isArchived={item.is_archived}
         />
       </React.Fragment>
-    ),
-    {
-      title: "Name",
-      field: "name",
+    ), {
+      title: 'Name',
+      field: 'name',
       width: null,
-    }
-  ),
-  Columns.custom((text, item) => item.user.name, { title: "Created By", width: "1%" }),
-  Columns.dateTime.sortable({
-    title: "Created At",
-    field: "created_at",
-    width: "1%",
-  }),
-];
+    }),
+    Columns.avatar({ field: 'user', className: 'p-l-0 p-r-0' }, name => `Created by ${name}`),
+    Columns.dateTime.sortable({
+      title: 'Created At',
+      field: 'created_at',
+      className: 'text-nowrap',
+      width: '1%',
+    }),
+  ];
 
-function DashboardListExtraActions(props) {
-  return <DynamicComponent name="DashboardList.Actions" {...props} />;
-}
-
-function DashboardList({ controller }) {
-  const {
-    areExtraActionsAvailable,
-    listColumns: tableColumns,
-    Component: ExtraActionsComponent,
-    selectedItems,
-  } = useItemsListExtraActions(controller, listColumns, DashboardListExtraActions);
-
-  return (
-    <div className="page-dashboard-list">
+  render() {
+    const { controller } = this.props;
+    return (
       <div className="container">
-        <PageHeader
-          title={controller.params.pageTitle}
-          actions={
-            currentUser.hasPermission("create_dashboard") ? (
-              <Button block type="primary" onClick={() => CreateDashboardDialog.showModal()}>
-                <i className="fa fa-plus m-r-5" aria-hidden="true" />
-                New Dashboard
-              </Button>
-            ) : null
-          }
-        />
-        <Layout>
+        <PageHeader title={controller.params.title} />
+        <Layout className="m-l-15 m-r-15">
           <Layout.Sidebar className="m-b-0">
             <Sidebar.SearchInput
               placeholder="Search Dashboards..."
-              label="Search dashboards"
               value={controller.searchTerm}
               onChange={controller.updateSearch}
             />
-            <Sidebar.Menu items={sidebarMenu} selected={controller.params.currentPage} />
-            <Sidebar.Tags url="api/dashboards/tags" onChange={controller.updateSelectedTags} showUnselectAll />
+            <Sidebar.Menu items={this.sidebarMenu} selected={controller.params.currentPage} />
+            <Sidebar.Tags url="api/dashboards/tags" onChange={controller.updateSelectedTags} />
+            <Sidebar.PageSizeSelect
+              className="m-b-10"
+              options={controller.pageSizeOptions}
+              value={controller.itemsPerPage}
+              onChange={itemsPerPage => controller.updatePagination({ itemsPerPage })}
+            />
           </Layout.Sidebar>
           <Layout.Content>
-            <div data-test="DashboardLayoutContent">
-              {controller.isLoaded && controller.isEmpty ? (
-                <DashboardListEmptyState
-                  page={controller.params.currentPage}
-                  searchTerm={controller.searchTerm}
-                  selectedTags={controller.selectedTags}
-                />
-              ) : (
-                <React.Fragment>
-                  <div className={cx({ "m-b-10": areExtraActionsAvailable })}>
-                    <ExtraActionsComponent selectedItems={selectedItems} />
-                  </div>
+            {controller.isLoaded ? (
+              <div data-test="DashboardLayoutContent">
+                {controller.isEmpty ? (
+                  <DashboardListEmptyState
+                    page={controller.params.currentPage}
+                    searchTerm={controller.searchTerm}
+                    selectedTags={controller.selectedTags}
+                  />
+                ) : (
                   <div className="bg-white tiled table-responsive">
                     <ItemsTable
                       items={controller.pageItems}
-                      loading={!controller.isLoaded}
-                      columns={tableColumns}
+                      columns={this.listColumns}
                       orderByField={controller.orderByField}
                       orderByReverse={controller.orderByReverse}
                       toggleSorting={controller.toggleSorting}
                     />
                     <Paginator
-                      showPageSizeSelect
                       totalCount={controller.totalItemsCount}
-                      pageSize={controller.itemsPerPage}
-                      onPageSizeChange={itemsPerPage => controller.updatePagination({ itemsPerPage })}
+                      itemsPerPage={controller.itemsPerPage}
                       page={controller.page}
                       onChange={page => controller.updatePagination({ page })}
                     />
                   </div>
-                </React.Fragment>
-              )}
-            </div>
+                )}
+              </div>
+            ) : (
+              <LoadingState />
+            )}
           </Layout.Content>
         </Layout>
       </div>
-    </div>
-  );
+    );
+  }
 }
 
-DashboardList.propTypes = {
-  controller: ControllerType.isRequired,
-};
-
-const DashboardListPage = itemsList(
-  DashboardList,
-  () =>
+export default function init(ngModule) {
+  ngModule.component('pageDashboardList', react2angular(itemsList(
+    DashboardList,
     new ResourceItemsSource({
       getResource({ params: { currentPage } }) {
         return {
           all: Dashboard.query.bind(Dashboard),
-          my: Dashboard.myDashboards.bind(Dashboard),
           favorites: Dashboard.favorites.bind(Dashboard),
         }[currentPage];
       },
       getItemProcessor() {
-        return item => new Dashboard(item);
+        return (item => new Dashboard(item));
       },
     }),
-  () => new UrlStateStorage({ orderByField: "created_at", orderByReverse: true })
-);
+    new UrlStateStorage({ orderByField: 'created_at', orderByReverse: true }),
+  )));
 
-routes.register(
-  "Dashboards.List",
-  routeWithUserSession({
-    path: "/dashboards",
-    title: "Dashboards",
-    render: pageProps => <DashboardListPage {...pageProps} currentPage="all" />,
-  })
-);
-routes.register(
-  "Dashboards.Favorites",
-  routeWithUserSession({
-    path: "/dashboards/favorites",
-    title: "Favorite Dashboards",
-    render: pageProps => <DashboardListPage {...pageProps} currentPage="favorites" />,
-  })
-);
-routes.register(
-  "Dashboards.My",
-  routeWithUserSession({
-    path: "/dashboards/my",
-    title: "My Dashboards",
-    render: pageProps => <DashboardListPage {...pageProps} currentPage="my" />,
-  })
-);
+  return routesToAngularRoutes([
+    {
+      path: '/dashboards',
+      title: 'Dashboards',
+      key: 'all',
+    },
+    {
+      path: '/dashboards/favorites',
+      title: 'Favorite Dashboards',
+      key: 'favorites',
+    },
+  ], {
+    reloadOnSearch: false,
+    template: '<page-dashboard-list on-error="handleError"></page-dashboard-list>',
+    controller($scope, $exceptionHandler) {
+      'ngInject';
+
+      $scope.handleError = $exceptionHandler;
+    },
+  });
+}
+
+init.init = true;

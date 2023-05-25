@@ -38,15 +38,18 @@ class Script(BaseQueryRunner):
     @classmethod
     def configuration_schema(cls):
         return {
-            "type": "object",
-            "properties": {
-                "path": {"type": "string", "title": "Scripts path"},
-                "shell": {
-                    "type": "boolean",
-                    "title": "Execute command through the shell",
+            'type': 'object',
+            'properties': {
+                'path': {
+                    'type': 'string',
+                    'title': 'Scripts path'
                 },
+                'shell': {
+                    'type': 'boolean',
+                    'title': 'Execute command through the shell'
+                }
             },
-            "required": ["path"],
+            'required': ['path']
         }
 
     @classmethod
@@ -62,9 +65,7 @@ class Script(BaseQueryRunner):
 
         # Poor man's protection against running scripts from outside the scripts directory
         if self.configuration["path"].find("../") > -1:
-            raise ValueError(
-                "Scripts can only be run from the configured scripts directory"
-            )
+            raise ValueError("Scripts can only be run from the configured scripts directory")
 
     def test_connection(self):
         pass
@@ -72,11 +73,13 @@ class Script(BaseQueryRunner):
     def run_query(self, query, user):
         try:
             script = query_to_script_path(self.configuration["path"], query)
-            return run_script(script, self.configuration["shell"])
+            return run_script(script, self.configuration['shell'])
         except IOError as e:
-            return None, str(e)
+            return None, e.message
         except subprocess.CalledProcessError as e:
             return None, str(e)
+        except KeyboardInterrupt:
+            return None, "Query cancelled by user."
 
 
 register(Script)

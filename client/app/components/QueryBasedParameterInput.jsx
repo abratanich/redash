@@ -1,13 +1,16 @@
-import { find, isArray, get, first, map, intersection, isEqual, isEmpty } from "lodash";
-import React from "react";
-import PropTypes from "prop-types";
-import SelectWithVirtualScroll from "@/components/SelectWithVirtualScroll";
+import { find, isFunction, isArray, isEqual, toString, map, intersection } from 'lodash';
+import React from 'react';
+import PropTypes from 'prop-types';
+import { react2angular } from 'react2angular';
+import Select from 'antd/lib/select';
 
-export default class QueryBasedParameterInput extends React.Component {
+const { Option } = Select;
+
+export class QueryBasedParameterInput extends React.Component {
   static propTypes = {
     parameter: PropTypes.any, // eslint-disable-line react/forbid-prop-types
     value: PropTypes.any, // eslint-disable-line react/forbid-prop-types
-    mode: PropTypes.oneOf(["default", "multiple"]),
+    mode: PropTypes.oneOf(['default', 'multiple']),
     queryId: PropTypes.number,
     onSelect: PropTypes.func,
     className: PropTypes.string,
@@ -15,18 +18,17 @@ export default class QueryBasedParameterInput extends React.Component {
 
   static defaultProps = {
     value: null,
-    mode: "default",
+    mode: 'default',
     parameter: null,
     queryId: null,
     onSelect: () => {},
-    className: "",
+    className: '',
   };
 
   constructor(props) {
     super(props);
     this.state = {
       options: [],
-      value: null,
       loading: false,
     };
   }
@@ -39,62 +41,61 @@ export default class QueryBasedParameterInput extends React.Component {
     if (this.props.queryId !== prevProps.queryId) {
       this._loadOptions(this.props.queryId);
     }
-    if (this.props.value !== prevProps.value) {
-      this.setValue(this.props.value);
-    }
-  }
-
-  setValue(value) {
-    const { options } = this.state;
-    if (this.props.mode === "multiple") {
-      value = isArray(value) ? value : [value];
-      const optionValues = map(options, option => option.value);
-      const validValues = intersection(value, optionValues);
-      this.setState({ value: validValues });
-      return validValues;
-    }
-    const found = find(options, option => option.value === this.props.value) !== undefined;
-    value = found ? value : get(first(options), "value");
-    this.setState({ value });
-    return value;
   }
 
   async _loadOptions(queryId) {
-    if (queryId && queryId !== this.state.queryId) {
+    if (queryId && (queryId !== this.state.queryId)) {
       this.setState({ loading: true });
       const options = await this.props.parameter.loadDropdownValues();
 
       // stale queryId check
       if (this.props.queryId === queryId) {
-        this.setState({ options, loading: false }, () => {
-          const updatedValue = this.setValue(this.props.value);
-          if (!isEqual(updatedValue, this.props.value)) {
-            this.props.onSelect(updatedValue);
+        this.setState({ options, loading: false });
+
+        if (this.props.mode === 'multiple' && isArray(this.props.value)) {
+          const optionValues = map(options, option => option.value);
+          const validValues = intersection(this.props.value, optionValues);
+          if (!isEqual(this.props.value, validValues)) {
+            this.props.onSelect(validValues);
           }
-        });
+        } else {
+          const found = find(options, option => option.value === this.props.value) !== undefined;
+          if (!found && isFunction(this.props.onSelect)) {
+            this.props.onSelect(options[0].value);
+          }
+        }
       }
     }
   }
 
   render() {
-    const { className, mode, onSelect, queryId, value, ...otherProps } = this.props;
+    const { className, value, mode, onSelect, ...otherProps } = this.props;
     const { loading, options } = this.state;
     return (
       <span>
-        <SelectWithVirtualScroll
+        <Select
           className={className}
-          disabled={loading}
+          disabled={loading || (options.length === 0)}
           loading={loading}
           mode={mode}
-          value={this.state.value}
+          value={isArray(value) ? value : toString(value)}
           onChange={onSelect}
-          options={map(options, ({ value, name }) => ({ label: String(name), value }))}
+          dropdownMatchSelectWidth={false}
+          optionFilterProp="children"
           showSearch
           showArrow
-          notFoundContent={isEmpty(options) ? "No options available" : null}
+          notFoundContent={null}
           {...otherProps}
-        />
+        >
+          {options.map(option => (<Option value={option.value} key={option.value}>{option.name}</Option>))}
+        </Select>
       </span>
     );
   }
 }
+
+export default function init(ngModule) {
+  ngModule.component('queryBasedParameterInput', react2angular(QueryBasedParameterInput));
+}
+
+init.init = true;

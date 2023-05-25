@@ -1,41 +1,31 @@
-import { axios } from "@/services/axios";
-import { merge } from "lodash";
+export let Alert = null; // eslint-disable-line import/no-mutable-exports
 
-// backwards compatibility
-const normalizeCondition = {
-  "greater than": ">",
-  "less than": "<",
-  equals: "=",
-};
+function AlertService($resource, $http) {
+  const actions = {
+    save: {
+      method: 'POST',
+      transformRequest: [(data) => {
+        const newData = Object.assign({}, data);
+        if (newData.query_id === undefined) {
+          newData.query_id = newData.query.id;
+          newData.destination_id = newData.destinations;
+          delete newData.query;
+          delete newData.destinations;
+        }
 
-const transformResponse = data =>
-  merge({}, data, {
-    options: {
-      op: normalizeCondition[data.options.op] || data.options.op,
+        return newData;
+      }].concat($http.defaults.transformRequest),
     },
+  };
+  return $resource('api/alerts/:id', { id: '@id' }, actions);
+}
+
+export default function init(ngModule) {
+  ngModule.factory('Alert', AlertService);
+
+  ngModule.run(($injector) => {
+    Alert = $injector.get('Alert');
   });
+}
 
-const transformRequest = data => {
-  const newData = Object.assign({}, data);
-  if (newData.query_id === undefined) {
-    newData.query_id = newData.query.id;
-    newData.destination_id = newData.destinations;
-    delete newData.query;
-    delete newData.destinations;
-  }
-
-  return newData;
-};
-
-const saveOrCreateUrl = data => (data.id ? `api/alerts/${data.id}` : "api/alerts");
-
-const Alert = {
-  query: () => axios.get("api/alerts"),
-  get: ({ id }) => axios.get(`api/alerts/${id}`).then(transformResponse),
-  save: data => axios.post(saveOrCreateUrl(data), transformRequest(data)),
-  delete: data => axios.delete(`api/alerts/${data.id}`),
-  mute: data => axios.post(`api/alerts/${data.id}/mute`),
-  unmute: data => axios.delete(`api/alerts/${data.id}/mute`),
-};
-
-export default Alert;
+init.init = true;

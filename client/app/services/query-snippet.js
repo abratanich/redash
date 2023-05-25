@@ -1,14 +1,10 @@
-import { axios } from "@/services/axios";
-import { extend, map } from "lodash";
+export let QuerySnippet = null; // eslint-disable-line import/no-mutable-exports
 
-class QuerySnippet {
-  constructor(querySnippet) {
-    extend(this, querySnippet);
-  }
-
-  getSnippet() {
+function QuerySnippetService($resource) {
+  const resource = $resource('api/query_snippets/:id', { id: '@id' });
+  resource.prototype.getSnippet = function getSnippet() {
     let name = this.trigger;
-    if (this.description !== "") {
+    if (this.description !== '') {
       name = `${this.trigger}: ${this.description}`;
     }
 
@@ -17,17 +13,17 @@ class QuerySnippet {
       content: this.snippet,
       tabTrigger: this.trigger,
     };
-  }
+  };
+
+  return resource;
 }
 
-const getQuerySnippet = querySnippet => new QuerySnippet(querySnippet);
+export default function init(ngModule) {
+  ngModule.factory('QuerySnippet', QuerySnippetService);
 
-const QuerySnippetService = {
-  get: data => axios.get(`api/query_snippets/${data.id}`).then(getQuerySnippet),
-  query: () => axios.get("api/query_snippets").then(data => map(data, getQuerySnippet)),
-  create: data => axios.post("api/query_snippets", data).then(getQuerySnippet),
-  save: data => axios.post(`api/query_snippets/${data.id}`, data).then(getQuerySnippet),
-  delete: data => axios.delete(`api/query_snippets/${data.id}`),
-};
+  ngModule.run(($injector) => {
+    QuerySnippet = $injector.get('QuerySnippet');
+  });
+}
 
-export default QuerySnippetService;
+init.init = true;

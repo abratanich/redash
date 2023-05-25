@@ -1,7 +1,8 @@
-import React from "react";
-import Modal from "antd/lib/modal";
-import Input from "antd/lib/input";
-import { wrap as wrapDialog, DialogPropType } from "@/components/DialogWrapper";
+import React from 'react';
+import Modal from 'antd/lib/modal';
+import Input from 'antd/lib/input';
+import { wrap as wrapDialog, DialogPropType } from '@/components/DialogWrapper';
+import { Group } from '@/services/group';
 
 class CreateGroupDialog extends React.Component {
   static propTypes = {
@@ -9,13 +10,13 @@ class CreateGroupDialog extends React.Component {
   };
 
   state = {
-    name: "",
+    name: '',
   };
 
   save = () => {
-    this.props.dialog.close({
+    this.props.dialog.close(new Group({
       name: this.state.name,
-    });
+    }));
   };
 
   render() {
@@ -28,7 +29,6 @@ class CreateGroupDialog extends React.Component {
           onChange={event => this.setState({ name: event.target.value })}
           onPressEnter={() => this.save()}
           placeholder="Group Name"
-          aria-label="Group name"
           autoFocus
         />
       </Modal>
